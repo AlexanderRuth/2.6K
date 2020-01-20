@@ -10,10 +10,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#define MEM_SIZE 8192
+#define MEM_SIZE 0xFFFF
 #define TIA_OFFSET 0x0000
 #define RAM_OFFSET 0x0080
-#define ROM_OFFSET 0x1000
+#define ROM_OFFSET 0xF000
 
 class MMU
 {

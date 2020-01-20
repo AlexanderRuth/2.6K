@@ -3,11 +3,10 @@
 bool CPU::tick()
 {
 	//std::cout << "PC: " << pc << std::endl;
-	if (pc >= 0xF000)
-		return false;
+	//if (pc >= 0xF000)
+	//	return false;
 	//Lookup the next instruction
 	uint8_t ins = m_mem->read_rom(pc);
-	//std::cout << "INS: " << (int) ins << std::endl;
 
 	if (cycles > 1)
 	{
@@ -28,24 +27,29 @@ bool CPU::tick()
 			case 0x85: STA(zpg()); break;
 			case 0x86: STX(zpg()); break;
 			case 0x88: DEY(); break;
+			case 0x95: STA(zpgx()); break;
 			case 0xA0: LDY(imm(), true); break;
 			case 0xA2: LDX(imm(), true); break;
+			case 0xA5: LDA(zpg()); break;
 			case 0xA9: LDA(imm(), true); break;
+			case 0xC0: CPY(imm(), true); break;
+			case 0xC8: INY(); break;
+			case 0xE6: INC(zpg()); break;
 			case 0xEA: pc += 1; break;				//NOP
 			}
 		}
 
-		if (pc >= 0xF000)
+		/*if (pc >= 0xF000)
 		{
 			return false;
-		}
+		}*/
 
 		ins = m_mem->read_rom(pc);
 
 		//Determine next instruction cycle count
 		switch (ins)
 		{
-		case 0x4C: cycles = 2; break;
+		case 0x4C: cycles = 3; break;
 		case 0xD0: cycles = 2; break;
 		case 0xE0: cycles = 2; break;
 		case 0xE8: cycles = 2; break;
@@ -53,9 +57,14 @@ bool CPU::tick()
 		case 0x85: cycles = 3; break;
 		case 0x86: cycles = 3; break;
 		case 0x88: cycles = 2; break;
+		case 0x95: cycles = 4; break;
 		case 0xA0: cycles = 2; break;
 		case 0xA2: cycles = 2; break;
+		case 0xA5: cycles = 3; break;
 		case 0xA9: cycles = 2; break;
+		case 0xC0: cycles = 2; break;
+		case 0xC8: cycles = 2; break;
+		case 0xE6: cycles = 5; break;
 		case 0xEA: cycles = 2; break;
 		}
 
@@ -108,6 +117,13 @@ uint16_t CPU::zpg()
 	return res;
 }
 
+uint16_t CPU::zpgx()
+{
+	uint16_t res = m_mem->read_rom(pc + 1) + x;
+	pc += 2;
+	return res;
+}
+
 uint16_t CPU::rel()
 {
 	uint16_t res = pc + 2 + (int8_t) m_mem->read_rom(pc + 1);
@@ -155,6 +171,22 @@ void CPU::CPX(uint16_t addr, bool imm)
 	//set_sr(C, 0);
 }
 
+void CPU::CPY(uint16_t addr, bool imm)
+{
+	int8_t tmp;
+
+	if (debug)
+		std::cout << "CPY: " << std::hex << addr << std::endl;
+	if (imm)
+		tmp = y - addr;
+	else
+		tmp = y - m_mem->read(addr);
+
+	set_sr(N, tmp < 0);
+	set_sr(Z, tmp == 0);
+	//set_sr(C, 0);
+}
+
 void CPU::DEY()
 {
 	if (debug)
@@ -166,6 +198,19 @@ void CPU::DEY()
 	set_sr(N, y < 0);
 }
 
+void CPU::INC(uint16_t addr)
+{
+	if (debug)
+		std::cout << "INC" << std::hex << addr << std::endl;
+
+	uint8_t tmp = m_mem->read(addr);
+	tmp++;
+	m_mem->write(addr, tmp);
+
+	set_sr(Z, tmp == 0);
+	set_sr(N, tmp < 0);
+}
+
 void CPU::INX()
 {
 	if (debug)
@@ -174,14 +219,24 @@ void CPU::INX()
 	pc += 1;
 	x++;
 	set_sr(Z, x == 0);
-	set_sr(N, ac < 0);
+	set_sr(N, x < 0);
+}
+
+void CPU::INY()
+{
+	if (debug)
+		std::cout << "INY" << std::endl;
+
+	pc += 1;
+	y++;
+	set_sr(Z, y == 0);
+	set_sr(N, y < 0);
 }
 
 void CPU::JMP(uint16_t addr, bool imm)
 {
 	if (debug)
 		std::cout << "JMP: " << std::hex << addr << std::endl;
-
 	if (imm)
 		pc = addr;
 	else

@@ -25,8 +25,8 @@ class CPU
 {
 public:
 	CPU(std::shared_ptr<MMU> mem)
-		: pc{ 0 }, ac{ 0 }, x{ 0 }, y{ 0 }, sr{ 0 }, sp{ 0 }, m_mem{ mem }, 
-		cycles{ 0 }, start{ true }, debug{ true }
+		: pc{ 0xF000 }, ac{ 0 }, x{ 0 }, y{ 0 }, sr{ 0 }, sp{ 0 }, m_mem{ mem }, 
+		cycles{ 0 }, start{ true }, debug{ false }
 	{}
 
 	//Run a clock cycle
@@ -38,6 +38,7 @@ public:
 	uint16_t absy();
 	uint16_t imm();
 	uint16_t zpg();
+	uint16_t zpgx();
 	uint16_t rel();
 
 	//status register
@@ -59,8 +60,11 @@ private:
 	//INSTRUCTIONS
 	void BNE(uint16_t addr);
 	void CPX(uint16_t addr, bool imm = false);
+	void CPY(uint16_t addr, bool imm = false);
 	void DEY();
+	void INC(uint16_t addr);
 	void INX();
+	void INY();
 	void JMP(uint16_t addr, bool imm = false);
 	void LDA(uint16_t addr, bool imm = false);
 	void LDX(uint16_t addr, bool imm = false);

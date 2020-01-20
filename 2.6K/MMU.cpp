@@ -26,16 +26,18 @@ int8_t MMU::read_tia(uint16_t addr)
 }
 uint8_t MMU::read_rom(uint16_t addr)
 {
-	return m_mem[ROM_OFFSET + addr];
+	return m_mem[addr];
 }
 
 void MMU::write(uint16_t addr, int8_t data)
 {
+	//TIA strobe registers
 	if (addr == 0x02)
 	{
 		m_mem[addr] = 1;
 		return;
 	}
+
 	if (addr >> 13 > 0)
 		//error: addr out of range
 		return;

@@ -51,6 +51,8 @@ TIA::~TIA()
 
 TIA_FLAG TIA::tick()
 {
+
+
 	//Check registers
 	TIA_FLAG ret = check_registers();
 	
@@ -65,6 +67,7 @@ TIA_FLAG TIA::tick()
 		if (cur_clock > HBLANK)
 		{
 			draw_background();
+			draw_playfield();
 		}
 
 		if(cur_scanline == PICTURE && cur_clock >= 228)
@@ -74,11 +77,12 @@ TIA_FLAG TIA::tick()
 	else if (cur_scanline <= OVERSCAN)
 		//OVERSCAN
 		;
-	if (cur_scanline > OVERSCAN && cur_clock >= 228)
+
+	if (cur_scanline >= OVERSCAN && cur_clock >= 228)
 	{
 
-		cur_clock = 0;
-		cur_scanline = 0;
+		cur_clock = 1;
+		cur_scanline = 1;
 		if (cpu_wait)
 		{
 			cpu_wait = false;
@@ -90,7 +94,7 @@ TIA_FLAG TIA::tick()
 		}
 
 	}
-	else if (cur_clock > 228)
+	else if (cur_clock >= 228)
 	{
 		cur_scanline += 1;
 		cur_clock = 0;
@@ -120,8 +124,37 @@ void TIA::draw_background()
 	
 	SDL_SetRenderDrawColor(m_renderer, tia_colors[color/2%num][0], tia_colors[color/2%num][1], tia_colors[color/2%num][2], 255);
 	//SDL_RenderClear(m_renderer);
+
+//	if (last_pf + 1 >= (cur_clock - HBLANK - 1))
+//		return;
 	SDL_RenderDrawPoint(m_renderer, (cur_clock - HBLANK - 1) * 2, cur_scanline - VBLANK - 1);
 	SDL_RenderDrawPoint(m_renderer, (cur_clock - HBLANK - 1) * 2 + 1, cur_scanline - VBLANK - 1);
+}
+
+void TIA::draw_playfield()
+{
+	//Read color
+	uint8_t color = m_mem->read_tia(COLUPF);
+
+	uint8_t draw_pf_pixel = 0;
+
+	//Map cur pixel to playfield register
+
+	//PF1
+	if (cur_clock - HBLANK > 4 && cur_clock - HBLANK <= 12)
+	{
+		draw_pf_pixel = m_mem->read_tia(PF1) & (0b1 << (cur_clock-HBLANK-4));
+	}
+
+	if (draw_pf_pixel)
+	{
+		last_pf = (cur_clock - HBLANK - 1);
+		SDL_SetRenderDrawColor(m_renderer, tia_colors[color / 2 % num][0], tia_colors[color / 2 % num][1], tia_colors[color / 2 % num][2], 255);
+		SDL_RenderDrawPoint(m_renderer, (cur_clock - HBLANK - 1) * 2, cur_scanline - VBLANK - 1);
+		SDL_RenderDrawPoint(m_renderer, (cur_clock - HBLANK - 1) * 2+1, cur_scanline - VBLANK - 1);
+		SDL_RenderDrawPoint(m_renderer, (cur_clock - HBLANK - 1) * 4 + 2, cur_scanline - VBLANK - 1);
+		SDL_RenderDrawPoint(m_renderer, (cur_clock - HBLANK - 1) * 4 + 3, cur_scanline - VBLANK - 1);
+	}
 }
 
 TIA_FLAG TIA::check_registers()

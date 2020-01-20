@@ -49,5 +49,8 @@
     <None Include="tests.md">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="..\..\..\..\Downloads\test3.bin">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

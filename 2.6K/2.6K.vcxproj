@@ -152,6 +152,7 @@
     <ClInclude Include="TIA.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\..\..\Downloads\test3.bin" />
     <None Include="test1.bin" />
     <None Include="test2.bin" />
     <None Include="tests.md" />

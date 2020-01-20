@@ -13,7 +13,7 @@
 #define SCREEN_HEIGHT 192
 
 int main(int argc, char* args[]) {
-	std::string file = "test2.bin";
+	std::string file = "test1.bin";
 
 	unsigned char rom[4096];
 	std::ifstream fin;
