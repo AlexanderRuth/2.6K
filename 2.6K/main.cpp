@@ -10,10 +10,10 @@
 #include "CPU.h"
 
 #define SCREEN_WIDTH 160 * 2
-#define SCREEN_HEIGHT 192
+#define SCREEN_HEIGHT 222
 
 int main(int argc, char* args[]) {
-	std::string file = "test1.bin";
+	std::string file = "test3.bin";
 
 	unsigned char rom[4096];
 	std::ifstream fin;
@@ -28,7 +28,7 @@ int main(int argc, char* args[]) {
 	TIA tia(mem);
 	CPU cpu(mem);
 
-	tia.init_screen(SCREEN_WIDTH, SCREEN_HEIGHT);
+	tia.init_screen(SCREEN_HEIGHT, SCREEN_WIDTH);
 
 
 	TIA_FLAG ret;
