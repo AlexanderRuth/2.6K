@@ -9,11 +9,11 @@
 #include "MMU.h"
 #include "CPU.h"
 
-#define SCREEN_WIDTH 160 * 2
-#define SCREEN_HEIGHT 222
+#define SCREEN_WIDTH 160 * 4
+#define SCREEN_HEIGHT 222 * 2
 
 int main(int argc, char* args[]) {
-	std::string file = "test3.bin";
+	std::string file = "test5.bin";
 
 	unsigned char rom[4096];
 	std::ifstream fin;
@@ -37,18 +37,17 @@ int main(int argc, char* args[]) {
 
 	int when = 0;
 
-	while (cont)
-	{
-		for (int i = 0; i < 3; i++)
-		{
+	while (cont){
+		for (int i = 0; i < 3; i++){
 			if (!cpu_sleep && when == i)
 				cont = cpu.tick();
 
 			ret = tia.tick();
+			
 			if (ret == CPU_SLEEP)
 				cpu_sleep = true;
-			if (ret == CPU_WAKEUP)
-			{
+
+			if (ret == CPU_WAKEUP){
 				cpu_sleep = false;
 				when = i;
 				cpu.tick();

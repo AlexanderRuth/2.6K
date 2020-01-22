@@ -19,6 +19,9 @@ bool CPU::tick()
 		{
 			switch (ins)
 			{
+			case 0x38: SEC(); pc += 1; break;
+			case 0x48: PHA(); pc += 1; break;
+			case 0x49: EOR(imm(), true); break;
 			case 0x4C: JMP(abs(), true); break;
 			case 0xD0: BNE(rel()); break;
 			case 0xE0: CPX(imm(), true); break;
@@ -27,15 +30,23 @@ bool CPU::tick()
 			case 0x85: STA(zpg()); break;
 			case 0x86: STX(zpg()); break;
 			case 0x88: DEY(); break;
+			case 0x8A: TXA(); pc+=1; break;
+			case 0x8D: STA(abs()); break;
 			case 0x95: STA(zpgx()); break;
+			case 0x9A: TXS(); break;
 			case 0xA0: LDY(imm(), true); break;
 			case 0xA2: LDX(imm(), true); break;
 			case 0xA5: LDA(zpg()); break;
+			case 0xA6: LDX(zpg()); break;
 			case 0xA9: LDA(imm(), true); break;
+			case 0xAD: LDA(abs()); break;
 			case 0xC0: CPY(imm(), true); break;
 			case 0xC8: INY(); break;
+			case 0xCA: DEX(); pc += 1; break;
 			case 0xE6: INC(zpg()); break;
 			case 0xEA: pc += 1; break;				//NOP
+			case 0xF0: BEQ(rel()); break;
+			default: std::cout << "Unknown opcode: " << std::hex << (int) ins << std::endl;
 			}
 		}
 
@@ -49,6 +60,10 @@ bool CPU::tick()
 		//Determine next instruction cycle count
 		switch (ins)
 		{
+		case 0x38: cycles = 2; break;
+		case 0x48: cycles = 3; break;
+		case 0x49: cycles = 2; break;
+		case 0x4A: cycles = 3; break;
 		case 0x4C: cycles = 3; break;
 		case 0xD0: cycles = 2; break;
 		case 0xE0: cycles = 2; break;
@@ -57,15 +72,23 @@ bool CPU::tick()
 		case 0x85: cycles = 3; break;
 		case 0x86: cycles = 3; break;
 		case 0x88: cycles = 2; break;
+		case 0x8A: cycles = 2; break;
+		case 0x8D: cycles = 4; break;
 		case 0x95: cycles = 4; break;
+		case 0x9A: cycles = 2; break;
 		case 0xA0: cycles = 2; break;
 		case 0xA2: cycles = 2; break;
 		case 0xA5: cycles = 3; break;
+		case 0xA6: cycles = 3; break;
 		case 0xA9: cycles = 2; break;
+		case 0xAD: cycles = 4; break;
 		case 0xC0: cycles = 2; break;
 		case 0xC8: cycles = 2; break;
+		case 0xCA: cycles = 2; break;
 		case 0xE6: cycles = 5; break;
 		case 0xEA: cycles = 2; break;
+		case 0xF0: cycles = 2; break;
+		default: std::cout << "Unknown opcode: " << std::hex << (int)ins << std::endl;
 		}
 
 		if(start)
@@ -155,6 +178,14 @@ void CPU::BNE(uint16_t addr)
 		pc = addr;
 }
 
+void CPU::BEQ(uint16_t addr)
+{
+	if (debug)
+		std::cout << "BEQ: " << std::hex << addr << std::endl;
+	if (get_sr(Z))
+		pc = addr;
+}
+
 void CPU::CPX(uint16_t addr, bool imm)
 {
 	int8_t tmp;
@@ -187,6 +218,17 @@ void CPU::CPY(uint16_t addr, bool imm)
 	//set_sr(C, 0);
 }
 
+void CPU::DEX()
+{
+	if (debug)
+		std::cout << "DEX" << std::endl;
+
+	pc += 1;
+	x--;
+	set_sr(Z, x == 0);
+	set_sr(N, x < 0);
+}
+
 void CPU::DEY()
 {
 	if (debug)
@@ -196,6 +238,21 @@ void CPU::DEY()
 	y--;
 	set_sr(Z, y == 0);
 	set_sr(N, y < 0);
+}
+
+void CPU::EOR(uint16_t addr, bool imm)
+{
+
+	if (debug)
+		std::cout << "CPY: " << std::hex << addr << std::endl;
+	if (imm)
+		ac = ac ^ addr;
+	else
+		ac = ac ^ m_mem->read(addr);
+
+	set_sr(N, ac < 0);
+	set_sr(Z, ac == 0);
+
 }
 
 void CPU::INC(uint16_t addr)
@@ -282,6 +339,16 @@ void CPU::LDY(uint16_t addr, bool imm)
 	set_sr(N, y < 0);
 }
 
+void CPU::PHA()
+{
+
+}
+
+void CPU::SEC()
+{
+	set_sr(C, 1);
+}
+
 void CPU::STA(uint16_t addr)
 {
 	if (debug)
@@ -303,4 +370,18 @@ void CPU::STY(uint16_t addr)
 	if (debug)
 		std::cout << "STY: " << std::hex << addr << std::endl;
 	m_mem->write(addr, y);
+}
+
+void CPU::TXA()
+{
+	if (debug)
+		std::cout << "TXA" << std::endl;
+	ac = x;
+	set_sr(N, ac < 0);
+	set_sr(Z, ac == 0);
+}
+
+void CPU::TXS()
+{
+	sp = x;
 }

@@ -52,6 +52,8 @@ TIA::~TIA()
 {
 	if (m_pixels)
 		delete[] m_pixels;
+	if (m_claimed)
+		delete[] m_claimed;
 
 	if (m_window){
 		SDL_DestroyWindow(m_window);
@@ -73,57 +75,54 @@ TIA_FLAG TIA::tick()
 	else if (cur_scanline <= VBLANK)
 		//VBLANK
 		;
-	else if (cur_scanline <= OVERSCAN)
-	{
-		if (cur_clock > HBLANK)
-		{
+	else if (cur_scanline <= OVERSCAN){
+		//If past horizontal blank, begin drawing picture
+		if (cur_clock > HBLANK){
+			draw_player();
 			draw_playfield();
 			draw_background();
 		}
 
+		//If finished overscan, render the texture
 		if (cur_scanline == OVERSCAN && cur_clock >= 228){
 			SDL_UpdateTexture(m_texture, NULL, m_pixels, m_w * sizeof(Uint32));
 			SDL_RenderClear(m_renderer);
 			SDL_RenderCopy(m_renderer, m_texture, NULL, NULL);
 			SDL_RenderPresent(m_renderer);
-			memset(m_pixels, 255, m_w * m_h * sizeof(Uint32));
-			memset(m_claimed, NONE, m_w * m_h * sizeof(PIXEL_LEVEL));
 		}
 	}
 
-
-	if (cur_scanline >= OVERSCAN && cur_clock >= 228)
-	{
-		
+	//Once done overscan, reset clock and scanline counters
+	if (cur_scanline >= OVERSCAN && cur_clock >= 228){
+		memset(m_claimed, NONE, m_w);
 		cur_clock = 1;
 		cur_scanline = 1;
-		if (cpu_wait)
-		{
+
+		//Wake up CPU if needed
+		if (cpu_wait){
 			cpu_wait = false;
 			return CPU_WAKEUP;
 		}
-		else
-		{
+		else{
 			return OK;
 		}
 
 	}
-	else if (cur_clock >= 228)
-	{
+
+	//New scanline
+	else if (cur_clock >= 228){
+		memset(m_claimed, NONE, m_w);
 		cur_scanline += 1;
 		cur_clock = 0;
-		if (cpu_wait)
-		{
+		if (cpu_wait){
 			cpu_wait = false;
 			return CPU_WAKEUP;
 		}
-		else
-		{
+		else{
 			return OK;
 		}
 	}
-	else 
-	{
+	else {
 		cur_clock++;
 	}
 
@@ -135,12 +134,6 @@ void TIA::draw_background()
 {
 	//Read Color
 	uint8_t color = m_mem->read_tia(COLUBK);	
-	
-	//SDL_SetRenderDrawColor(m_renderer, tia_colors[color/2%num][0], tia_colors[color/2%num][1], tia_colors[color/2%num][2], 255);
-	//SDL_RenderClear(m_renderer);
-
-//	if (last_pf + 1 >= (cur_clock - HBLANK - 1))
-//		return;
 
 	int x = (cur_clock - HBLANK - 1) * PIXEL_WIDTH;
 	int y = (cur_scanline - VBLANK - 1);
@@ -148,28 +141,43 @@ void TIA::draw_background()
 	if (m_claimed[x] != NONE || m_claimed[x+1] != NONE)
 		return;
 
-	draw_pixel(x, y,  tia_colors[color / 2][0], tia_colors[color / 2][1], tia_colors[color / 2][2]);
-	draw_pixel(x + 1, y, tia_colors[color / 2][0], tia_colors[color / 2][1], tia_colors[color / 2][2]);
-	//SDL_RenderDrawPoint(m_renderer, (cur_clock - HBLANK - 1) * 2, cur_scanline - VBLANK - 1);
-	//SDL_RenderDrawPoint(m_renderer, (cur_clock - HBLANK - 1) * 2 + 1, cur_scanline - VBLANK - 1);
+	for (int i = 0; i < PIXEL_WIDTH; i++)
+	{
+		draw_pixel(x + i, y, tia_colors[color / 2][0], tia_colors[color / 2][1], tia_colors[color / 2][2]);
+	}
 }
 
 void TIA::draw_playfield()
 {
+	//Skip off cycle for the playfield (only render every 4 cycles)
+	if ((cur_clock - HBLANK) % 4 != 0)
+		return;
+
 	//Read color
 	uint8_t color = m_mem->read_tia(COLUPF);
 
+	//The PF bit to use (0 thru 19)
 	int pf_bit = std::ceil((cur_clock - HBLANK) / 4) - 1;
+
+	//How to shift the pf register
 	int shift = pf_bit >= 20 ? pf_bit - 20 : pf_bit;
 
+	//Draw the pixel?
 	uint8_t draw_pf_pixel = 0;
 
+	//Mirror?
 	uint8_t mirror = m_mem->read_tia(CTRLPF) & REF;
 	
+	//The actually index to use for the mirrored portion
 	int index = pf_bit;
+
+	//If mirroring is enabled and on the right half of the scanline
 	if (mirror && pf_bit >= 20) {
-		int index = pf_bit;
+
+		//The bit to mirror
 		pf_bit = 40 - pf_bit - 1;
+
+		//If not claimed in left half, unclaim in right half
 		if (m_claimed[pf_bit*PF_WIDTH] != PF) {
 			for (int i = 0; i < PF_WIDTH; i++) {
 				m_claimed[index * PF_WIDTH + i] = NONE;
@@ -177,6 +185,7 @@ void TIA::draw_playfield()
 			return;
 		}
 
+		//Otherwise, duplicate what's in the left half
 		for (int i = 0; i < PF_WIDTH; i++) {
 			draw_pixel(index*PF_WIDTH + i, cur_scanline - VBLANK - 1, tia_colors[color / 2][0], tia_colors[color / 2][1], tia_colors[color / 2][2]);
 			m_claimed[index* PF_WIDTH + i] = PF;
@@ -186,43 +195,73 @@ void TIA::draw_playfield()
 	}
 
 
-	//PF0
+	//PF0 (reversed)
 	if ((pf_bit >= 0 && pf_bit < 4) || (pf_bit >= 20 && pf_bit < 24)){
 		shift = 3 - shift;
-		//if(!mirror || pf_bit < 4)
-		//	shift = 3 - shift;
 		draw_pf_pixel = m_mem->read_tia(PF0) & (0b10000000 >> (shift));
 	}
 
-	//PF1
+	//PF1 (not reversed)
 	if ((pf_bit >= 4 && pf_bit < 12) || (pf_bit >= 24 && pf_bit < 32)){
 		draw_pf_pixel = m_mem->read_tia(PF1) & (0b10000000 >> (shift - 4));
 	}
 
-	//PF2
+	//PF2 (not reversed)
 	if ((pf_bit >= 12 && pf_bit < 20) || (pf_bit >= 32)){
 		draw_pf_pixel = m_mem->read_tia(PF2) & (0b10000000 >> (shift - 12));
 	}
 
-	if (draw_pf_pixel || last_pf == pf_bit){
-
-		last_pf = pf_bit;
+	//If the PF pixel is set to draw, draw a width of PF_WIDTH, and claim it for PF
+	if (draw_pf_pixel){
 		for (int i = 0; i < PF_WIDTH; i++) {
-			draw_pixel(pf_bit * PF_WIDTH + i, cur_scanline - VBLANK - 1, tia_colors[color / 2][0], tia_colors[color / 2][1], tia_colors[color / 2][2]);
-			m_claimed[pf_bit * PF_WIDTH + i] = PF;
+			if (m_claimed[pf_bit * PF_WIDTH + i] != P0 && m_claimed[pf_bit * PF_WIDTH + i] != P1) {
+				draw_pixel(pf_bit * PF_WIDTH + i, cur_scanline - VBLANK - 1, tia_colors[color / 2][0], tia_colors[color / 2][1], tia_colors[color / 2][2]);
+				m_claimed[pf_bit * PF_WIDTH + i] = PF;
+			}
 		}
 	}
-	else {
-		for (int i = 0; i < PF_WIDTH; i++) {
-			m_claimed[pf_bit * PF_WIDTH + i] = NONE;
+}
+
+void TIA::draw_player()
+{
+	uint8_t resp = m_mem->read(RESP0);
+	int index = cur_clock - HBLANK - 1;
+	if (resp) {
+		m_mem->clear(RESP0);
+		uint8_t player = m_mem->read(GRP0);
+		uint8_t color = m_mem->read(COLUP0);
+		for (int i = 0; i < 8; i++) {
+			if (player & (0b10000000 >> i)) {
+				for (int j = 0; j < PIXEL_WIDTH; j++) {
+					draw_pixel((index + i) * PIXEL_WIDTH + j, cur_scanline - VBLANK - 1, tia_colors[color / 2][0], tia_colors[color / 2][1], tia_colors[color / 2][2]);
+					m_claimed[(index + i) * PIXEL_WIDTH + j] = P0;
+				}
+
+			}
+		}
+	}
+	resp = m_mem->read(RESP1);
+	index = cur_clock - HBLANK - 1;
+	if (resp) {
+		m_mem->clear(RESP1);
+		uint8_t player = m_mem->read(GRP1);
+		uint8_t color = m_mem->read(COLUP1);
+		for (int i = 0; i < 8; i++) {
+			if (player & (0b10000000 >> i)) {
+				for (int j = 0; j < PIXEL_WIDTH; j++) {
+					draw_pixel((index + i) * PIXEL_WIDTH + j, cur_scanline - VBLANK - 1, tia_colors[color / 2][0], tia_colors[color / 2][1], tia_colors[color / 2][2]);
+					m_claimed[(index + i) * PIXEL_WIDTH + j] = P1;
+				}
+
+			}
 		}
 	}
 }
 
 TIA_FLAG TIA::check_registers()
 {
-	if (m_mem->read_tia(WSYNC))
-	{
+	//Check if CPU is sleeping till next scanline
+	if (m_mem->read_tia(WSYNC)){
 		m_mem->clear(WSYNC);
 		cpu_wait = true;
 		return CPU_SLEEP;
@@ -232,5 +271,6 @@ TIA_FLAG TIA::check_registers()
 
 void TIA::draw_pixel(int x, int y, uint8_t r, uint8_t g, uint8_t b)
 {
-	m_pixels[y * m_w + x] = ((((((255 << 8) + r) << 8) + g) << 8) + b);
+	for(int i = 0; i < PIXEL_HEIGHT; i++)
+		m_pixels[(y * PIXEL_HEIGHT + i) * m_w + x] = ((((((255 << 8) + r) << 8) + g) << 8) + b);
 }

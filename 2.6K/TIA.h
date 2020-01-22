@@ -41,16 +41,25 @@
 #define CTRLPF 0x0A
 #define REF 0b00000001	//Reflect playfield
 
+#define COLUP0 0x06
+#define COLUP1 0x07
 #define PF0 0x0D
 #define PF1 0x0E
 #define PF2 0x0F
 
-#define PIXEL_WIDTH 2
-#define PIXEL_HEIGHT 1
+#define RESP0 0x10	//Reset player 1
+#define RESP1 0x11	//Reset player 2
+#define RESM0 0x12
+#define RESM1 0x13
+#define GRP0 0x1B	//Player 1
+#define GRP1 0x1C	//Player 2
+
+#define PIXEL_WIDTH 4
+#define PIXEL_HEIGHT 2
 
 #define PF_WIDTH ((160 * PIXEL_WIDTH) / 40)
 
-enum PIXEL_LEVEL { NONE, BK, PF };					//PF takes precedence over BK, etc.
+enum PIXEL_LEVEL { NONE, BK, PF, P0, P1 };					//PF takes precedence over BK, etc.
 enum TIA_FLAG { CPU_SLEEP, CPU_WAKEUP, OK };
 
 class TIA
@@ -72,6 +81,7 @@ public:
 	void init_screen(int h, int w);
 	void draw_background();
 	void draw_playfield();
+	void draw_player();
 	void draw_pixel(int x, int y, uint8_t r, uint8_t g, uint8_t b);
 
 	TIA_FLAG check_registers();

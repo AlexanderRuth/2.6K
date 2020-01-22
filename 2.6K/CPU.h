@@ -59,9 +59,12 @@ private:
 
 	//INSTRUCTIONS
 	void BNE(uint16_t addr);
+	void BEQ(uint16_t addr);
 	void CPX(uint16_t addr, bool imm = false);
 	void CPY(uint16_t addr, bool imm = false);
+	void DEX();
 	void DEY();
+	void EOR(uint16_t addr, bool imm = false);
 	void INC(uint16_t addr);
 	void INX();
 	void INY();
@@ -69,7 +72,11 @@ private:
 	void LDA(uint16_t addr, bool imm = false);
 	void LDX(uint16_t addr, bool imm = false);
 	void LDY(uint16_t addr, bool imm = false);
+	void PHA();
+	void SEC();
 	void STA(uint16_t addr);
 	void STX(uint16_t addr);
 	void STY(uint16_t addr);
+	void TXA();
+	void TXS();
 };

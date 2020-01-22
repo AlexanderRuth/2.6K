@@ -32,7 +32,7 @@ uint8_t MMU::read_rom(uint16_t addr)
 void MMU::write(uint16_t addr, int8_t data)
 {
 	//TIA strobe registers
-	if (addr == 0x02)
+	if (addr == 0x02 || addr == 0x10 || addr == 0x11)
 	{
 		m_mem[addr] = 1;
 		return;
